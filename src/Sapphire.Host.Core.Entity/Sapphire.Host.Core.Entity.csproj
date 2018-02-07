@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Gcode.Entity" Version="0.1.58" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Gcode.Entity">
+      <HintPath>..\..\..\..\..\.nuget\packages\gcode.entity\0.1.48\lib\netstandard2.0\Gcode.Entity.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
