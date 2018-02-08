@@ -78,10 +78,13 @@ namespace Sapphire.Host {
 		}
 		public override string GetResponse() {
 			var res = string.Empty;
+			var sb = new StringBuilder(res);
+
 			while (_serialPort.BytesToRead > 0) {
-				res += _serialPort.ReadTo("\r\n").Trim();
+				sb.Append(_serialPort.ReadTo("\r\n").Trim());
 			}
-			return res;
+
+			return sb.ToString();
 		}
 #pragma warning disable S2953 // Methods named "Dispose" should implement "IDisposable.Dispose"
 		private void Dispose(bool disposing) {
