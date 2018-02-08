@@ -1,14 +1,13 @@
 ﻿using System;
 using System.IO.Ports;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using Sapphire.Host.Core.Base;
 
-namespace Sapphire.Host
-{
+namespace Sapphire.Host {
 	/// <inheritdoc />
-	public sealed class RepitierFirmwareDevice : DeviceBase
-	{
+	public sealed class RepitierFirmwareDevice : DeviceBase {
 
 		private SerialPort _serialPort;
 		private readonly string _portName;
@@ -18,33 +17,30 @@ namespace Sapphire.Host
 		/// <summary>
 		/// обновить информацию о состоянии соединения
 		/// </summary>
-		private void UpdateConnectionState()
-		{
+		private void UpdateConnectionState() {
 			ConnectedToDevice = _serialPort.IsOpen;
+		}
+		private int SendTimeOut(string commandFrame) {
+			return Encoding.Unicode.GetByteCount(commandFrame) * 10000 / _baudRate;
 		}
 		/// <summary>
 		/// очистка буферов
 		/// </summary>
 		/// <param name="timeout"></param>
-		public void ClearBuffers(int timeout)
-		{
+		public void ClearBuffers(int timeout) {
 			_serialPort.DiscardInBuffer();
 			_serialPort.DiscardOutBuffer();
 			Thread.Sleep(timeout);
 		}
-		public RepitierFirmwareDevice(string port, int baudRate = 15200)
-		{
+		public RepitierFirmwareDevice(string port, int baudRate = 15200) {
 			_portName = port;
 			_baudRate = baudRate;
 		}
 		private bool PortAvailable => SerialPort.GetPortNames().Contains(_portName);
 		/// <inheritdoc />
-		public override void Init()
-		{
-			if (PortAvailable)
-			{
-				_serialPort = new SerialPort(_portName, _baudRate)
-				{
+		public override void Init() {
+			if (PortAvailable) {
+				_serialPort = new SerialPort(_portName, _baudRate) {
 					Parity = Parity.None,
 					StopBits = StopBits.One,
 					DataBits = 8,
@@ -56,8 +52,7 @@ namespace Sapphire.Host
 
 		}
 		/// <inheritdoc />
-		public override void Connect(int timeOut = 3000)
-		{
+		public override void Connect(int timeOut = 3000) {
 			if (ConnectedToDevice) return;
 
 			//открыть порт
@@ -71,48 +66,37 @@ namespace Sapphire.Host
 
 		}
 		/// <inheritdoc />
-		public override void Disconnect(bool force = false)
-		{
+		public override void Disconnect(bool force = false) {
 			if (!ConnectedToDevice) return;
 			_serialPort.Close();
 			UpdateConnectionState();
 		}
 		/// <inheritdoc />
-		public override void SendCommandFrame(string frame)
-		{
+		public override void SendCommandFrame(string frame) {
 			_serialPort.WriteLine(frame);
+			Thread.Sleep(SendTimeOut(frame));
 		}
-		public override string GetResponse()
-		{
+		public override string GetResponse() {
 			var res = string.Empty;
-			while (_serialPort.BytesToRead > 0)
-			{
+			while (_serialPort.BytesToRead > 0) {
 				res += _serialPort.ReadTo("\r\n").Trim();
 			}
-				//res = _serialPort.ReadTo("\r").Trim();
-				//return _serialPort.ReadLine();
-				//var inData = _serialPort.ReadTo("\r\n").Trim();
-				//return !string.IsNullOrWhiteSpace(inData) ? inData : null;
-				return res;
+			return res;
 		}
 #pragma warning disable S2953 // Methods named "Dispose" should implement "IDisposable.Dispose"
-		private void Dispose(bool disposing)
-		{
+		private void Dispose(bool disposing) {
 			if (_disposed) return;
-			if (disposing)
-			{
+			if (disposing) {
 				_serialPort.Dispose();
 			}
 			_disposed = true;
 		}
 		/// <inheritdoc />
-		public override void Dispose()
-		{
+		public override void Dispose() {
 			Dispose(true);
 			GC.SuppressFinalize(this);
 		}
-		~RepitierFirmwareDevice()
-		{
+		~RepitierFirmwareDevice() {
 			Dispose(false);
 		}
 	}

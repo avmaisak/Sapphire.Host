@@ -1,28 +1,14 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using Gcode.Entity;
 using Gcode.Utils;
 
 namespace Sapphire.Host.ConsoleApp {
 	public static class SapphireHostConsole {
-		//private static readonly SapphireHost SapphireHost;
-		//static SapphireHostConsole() {
-		//	SapphireHost = SapphireHost.GetInstance();
-		//}
 		private const int BaudRate = 115200;
 		private static RepitierFirmwareDevice _dev;
-		private static IEnumerable<string> LoadFileContent(string path) {
-			var fileExist = File.Exists(path);
-			if (fileExist) {
-				return File.ReadAllLines(path);
-			}
-			return null;
-		}
 		private static string ToDevOutput(GcodeCommandFrame g) {
 			g.N = _totalSent;
 			var cmd = GcodeParser.ToStringCommand(g);
@@ -33,10 +19,8 @@ namespace Sapphire.Host.ConsoleApp {
 		private static long _totalSent = 1;
 		private static GcodeCommandFrame _lastSentCommand;
 		private static string _response;
-		private static void Restart()
-		{
-			if (_dev.ConnectedToDevice)
-			{
+		private static void Restart() {
+			if (_dev.ConnectedToDevice) {
 				Disconnect();
 				Connect();
 				_totalSent = 1;
@@ -46,34 +30,18 @@ namespace Sapphire.Host.ConsoleApp {
 			_lastSentCommand = CommandStack.Pop();
 			var strCmd = ToDevOutput(_lastSentCommand);
 			_dev.SendCommandFrame(strCmd);
-			Thread.Sleep( (Encoding.Unicode.GetByteCount(strCmd) * (10000) / BaudRate));
+			
 		}
-		private static void HandleResponse()
-		{
-			if (_response.Contains("fatal")) {
-				CommandStack.Push(_lastSentCommand);
-				Restart();
-				return;
-			}
-			while (!_response.Contains("ok")) {
-				_response = _dev.GetResponse();
-			}
-		}
-		private static void GetResponse()
-		{
-			_response = _dev.GetResponse();
-		
+		private static void GetResponse() {
+			_response = _dev.GetResponse().Trim();
 		}
 		private static void DoJob() {
+
 			while (CommandStack.Count > 0) {
 
 				SendNext();
-				//GetResponse();
-				//HandleResponse();
 
-				_response = _dev.GetResponse().Trim();
-				//Thread.Sleep(13 * 10000 / BaudRate * 100);
-				//Thread.Sleep(Encoding.Unicode.GetByteCount(_response) * 10000 / BaudRate);
+				GetResponse();
 
 				if (_response.Contains("fatal")) {
 					CommandStack.Push(_lastSentCommand);
@@ -89,7 +57,7 @@ namespace Sapphire.Host.ConsoleApp {
 
 				_totalSent++;
 				_response = string.Empty;
-				
+
 			}
 		}
 		private static void Connect() {
@@ -100,32 +68,31 @@ namespace Sapphire.Host.ConsoleApp {
 		private static void Disconnect() {
 			_dev.Disconnect();
 		}
-		private static void RealFileTestCube(string path) {
-			var f = File.ReadAllLines(path).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
-			var lines = f.Length;
+		private static void PrepareJob(IReadOnlyList<string> commands) {
+			var lines = commands.Count;
 			for (var i = lines; i > 0; i--) {
-				var line = f[i - 1];
-				if (!line.StartsWith(";")) {
-					var gCode = GcodeParser.ToGCode(line);
-					if (!string.IsNullOrWhiteSpace(gCode.Comment)) {
-						gCode.Comment = null;
-					}
+				var line = commands[i - 1];
+				if (line.StartsWith(";")) continue;
+				var gCode = GcodeParser.ToGCode(line);
+				if (!string.IsNullOrWhiteSpace(gCode.Comment)) {
+					gCode.Comment = null;
+				}
 
-					if (gCode.M != 109 && gCode.G != 28 && gCode.M != 190) {
-						CommandStack.Push(gCode);
-					}
-
+				if (gCode.M != 109 && gCode.G != 28 && gCode.M != 190) {
+					CommandStack.Push(gCode);
 				}
 			}
-
-			f = null;
-			
-
+		}
+		private static string[] ReadFile(string path) {
+			return File.ReadAllLines(path).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
 		}
 		public static int Main(string[] args) {
-			using (_dev = new RepitierFirmwareDevice("COM5", BaudRate)) {
+			var path = args[0];
+			var fileContent = ReadFile(path);
+			PrepareJob(fileContent);
+
+			using (_dev = new RepitierFirmwareDevice("COM4", BaudRate)) {
 				Connect();
-				RealFileTestCube(args[0]);
 				DoJob();
 				Disconnect();
 			}
