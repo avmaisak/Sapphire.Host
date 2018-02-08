@@ -40,7 +40,6 @@ namespace Sapphire.Host.ConsoleApp {
 			while (CommandStack.Count > 0) {
 
 				SendNext();
-
 				GetResponse();
 
 				if (_response.Contains("fatal")) {
@@ -77,7 +76,7 @@ namespace Sapphire.Host.ConsoleApp {
 				if (!string.IsNullOrWhiteSpace(gCode.Comment)) {
 					gCode.Comment = null;
 				}
-
+				//только для отладки.
 				if (gCode.M != 109 && gCode.G != 28 && gCode.M != 190) {
 					CommandStack.Push(gCode);
 				}

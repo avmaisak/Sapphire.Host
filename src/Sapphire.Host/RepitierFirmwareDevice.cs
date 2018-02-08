@@ -20,8 +20,8 @@ namespace Sapphire.Host {
 		private void UpdateConnectionState() {
 			ConnectedToDevice = _serialPort.IsOpen;
 		}
-		private int SendTimeOut(string commandFrame) {
-			return Encoding.Unicode.GetByteCount(commandFrame) * 10000 / _baudRate;
+		private int SendTimeOut(string commandFrame, int delay = 10000) {
+			return Encoding.Unicode.GetByteCount(commandFrame) * delay / _baudRate;
 		}
 		/// <summary>
 		/// очистка буферов
