@@ -2,6 +2,19 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Authors>Anton Maisak</Authors>
+    <Company>Rus-Bit</Company>
+    <Version>0.0.6</Version>
+    <Description>Кроссплатформенный хост для управления ЧПУ станком.</Description>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/rus-bit/Sapphire.Host/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/rus-bit/Sapphire.Host</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/rus-bit/Sapphire.Host.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>3dprinting host 3dprinting-host marlin-firmware repitier-firmware csharp cnc gcode cnc-host</PackageTags>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageReleaseNotes>Technical Preview</PackageReleaseNotes>
+    <PackageIconUrl>https://raw.githubusercontent.com/rus-bit/Sapphire.Host/master/misc/design/logo/sapphire.logo.png</PackageIconUrl>
   </PropertyGroup>
 
   <ItemGroup>
