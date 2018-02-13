@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Gcode.Entity;
 using Gcode.Utils;
 
@@ -17,8 +18,18 @@ namespace Sapphire.Host.ConsoleApp {
 		}
 		private static readonly Stack<GcodeCommandFrame> CommandStack = new Stack<GcodeCommandFrame>();
 		private static long _totalSent = 1;
+		private static long _totalAbs;
 		private static GcodeCommandFrame _lastSentCommand;
 		private static string _response;
+		private static readonly string FileName = $@"Z:\MyDocs\{Guid.NewGuid()}.txt";
+		private static void SaveToFile() {
+			
+			if (CommandStack.Count > 0) {
+				var s = new List<string> { $"{_totalAbs:D5}: {_totalAbs / CommandStack.Count * 100:D2}% >> {GcodeParser.ToStringCommand(_lastSentCommand)} << {_response.Trim()}" };
+				File.AppendAllLines(FileName, s);
+			}
+
+		}
 		private static void Restart() {
 			if (_dev.ConnectedToDevice) {
 				Disconnect();
@@ -30,10 +41,11 @@ namespace Sapphire.Host.ConsoleApp {
 			_lastSentCommand = CommandStack.Pop();
 			var strCmd = ToDevOutput(_lastSentCommand);
 			_dev.SendCommandFrame(strCmd);
-			
+
 		}
 		private static void GetResponse() {
 			_response = _dev.GetResponse().Trim();
+			
 		}
 		private static void DoJob() {
 
@@ -41,6 +53,7 @@ namespace Sapphire.Host.ConsoleApp {
 
 				SendNext();
 				GetResponse();
+				
 
 				if (_response.Contains("fatal")) {
 					CommandStack.Push(_lastSentCommand);
@@ -53,8 +66,10 @@ namespace Sapphire.Host.ConsoleApp {
 				}
 
 				Console.WriteLine($">> {CommandStack.Count:D5} {GcodeParser.ToStringCommand(_lastSentCommand)} << {_response}");
+				SaveToFile();
 
 				_totalSent++;
+				_totalAbs = _totalAbs + 1;
 				_response = string.Empty;
 
 			}

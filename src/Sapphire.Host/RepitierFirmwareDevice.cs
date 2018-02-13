@@ -86,7 +86,6 @@ namespace Sapphire.Host {
 
 			return sb.ToString();
 		}
-#pragma warning disable S2953 // Methods named "Dispose" should implement "IDisposable.Dispose"
 		private void Dispose(bool disposing) {
 			if (_disposed) return;
 			if (disposing) {

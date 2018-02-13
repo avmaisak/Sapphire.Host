@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Gcode.Entity" Version="0.1.58" />
+    <PackageReference Include="Gcode.Entity" Version="0.1.65" />
   </ItemGroup>
 
   <ItemGroup>

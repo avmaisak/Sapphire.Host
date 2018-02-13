@@ -18,9 +18,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Gcode.Common.Utils" Version="0.1.58" />
-    <PackageReference Include="Gcode.Entity" Version="0.1.58" />
-    <PackageReference Include="Gcode.Utils" Version="0.1.58" />
+    <PackageReference Include="Gcode.Common.Utils" Version="0.1.65" />
+    <PackageReference Include="Gcode.Entity" Version="0.1.65" />
+    <PackageReference Include="Gcode.Utils" Version="0.1.65" />
     <PackageReference Include="System.IO.Ports" Version="4.5.0-preview1-25914-04" />
   </ItemGroup>
 
