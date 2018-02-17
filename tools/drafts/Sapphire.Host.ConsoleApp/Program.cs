@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
+using System.Text;
 using Gcode.Entity;
 using Gcode.Utils;
 
 namespace Sapphire.Host.ConsoleApp {
 	public static class SapphireHostConsole {
+		private static DateTime _jobStartTime;
 		private const int BaudRate = 115200;
 		private static RepitierFirmwareDevice _dev;
 		private static string ToDevOutput(GcodeCommandFrame g) {
@@ -21,14 +22,20 @@ namespace Sapphire.Host.ConsoleApp {
 		private static long _totalAbs;
 		private static GcodeCommandFrame _lastSentCommand;
 		private static string _response;
-		private static readonly string FileName = $@"Z:\MyDocs\{Guid.NewGuid()}.txt";
-		private static void SaveToFile() {
-			
-			if (CommandStack.Count > 0) {
-				var s = new List<string> { $"{_totalAbs:D5}: {_totalAbs / CommandStack.Count * 100:D2}% >> {GcodeParser.ToStringCommand(_lastSentCommand)} << {_response.Trim()}" };
-				File.AppendAllLines(FileName, s);
-			}
+		private static readonly string FileName = $@"C:\Users\User\Documents\{DateTime.Now.ToShortDateString()}.{DateTime.Now.ToShortTimeString().Replace(":", "_")}.txt";
+		private static string OutputLog() {
+			return $"{_totalAbs:D5}: { _totalAbs * 100 / CommandStack.Count:D2}% {Math.Round(Convert.ToDecimal((DateTime.Now - _jobStartTime).TotalSeconds), 2)} sec >> {GcodeParser.ToStringCommand(_lastSentCommand)} << {_response.Trim()}";
+		}
+		private static async void SaveToFile(string data) {
 
+			if (CommandStack.Count > 0) {
+				var bytes = Encoding.UTF8.GetBytes($"{data}\r\n");
+
+				using (var stream = File.Open(FileName, FileMode.Append)) {
+					while (!stream.CanWrite) { }
+					await stream.WriteAsync(bytes, 0, bytes.Length);
+				}
+			}
 		}
 		private static void Restart() {
 			if (_dev.ConnectedToDevice) {
@@ -38,14 +45,12 @@ namespace Sapphire.Host.ConsoleApp {
 			}
 		}
 		private static void SendNext() {
+			_jobStartTime = DateTime.Now;
 			_lastSentCommand = CommandStack.Pop();
-			var strCmd = ToDevOutput(_lastSentCommand);
-			_dev.SendCommandFrame(strCmd);
-
+			_dev.SendCommandFrame(ToDevOutput(_lastSentCommand));
 		}
 		private static void GetResponse() {
 			_response = _dev.GetResponse().Trim();
-			
 		}
 		private static void DoJob() {
 
@@ -53,7 +58,6 @@ namespace Sapphire.Host.ConsoleApp {
 
 				SendNext();
 				GetResponse();
-				
 
 				if (_response.Contains("fatal")) {
 					CommandStack.Push(_lastSentCommand);
@@ -65,8 +69,9 @@ namespace Sapphire.Host.ConsoleApp {
 					_response = _dev.GetResponse().Trim();
 				}
 
-				Console.WriteLine($">> {CommandStack.Count:D5} {GcodeParser.ToStringCommand(_lastSentCommand)} << {_response}");
-				SaveToFile();
+				Console.WriteLine(OutputLog());
+
+				SaveToFile(OutputLog());
 
 				_totalSent++;
 				_totalAbs = _totalAbs + 1;
