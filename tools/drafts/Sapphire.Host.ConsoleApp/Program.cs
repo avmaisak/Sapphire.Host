@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 [assembly: CLSCompliant(true)]
 namespace Sapphire.Host.ConsoleApp {
 	public static class SapphireHostConsole {
+		private static JsonRequest _jsonRequest;
 		private static readonly string AppPath = AppDomain.CurrentDomain.BaseDirectory;
 		private static readonly string AppCfgPath = $"{AppPath}host.cfg.json";
 		private static HostConfiguration GetCfg() {
@@ -33,11 +34,13 @@ namespace Sapphire.Host.ConsoleApp {
 			cfg = GetCfg();
 			cfg.Token = token;
 			SaveCfg(cfg);
+			_jsonRequest = new JsonRequest { Token = cfg.Token };
+
 		}
 		private static HubConnection _connection;
 		private static DateTime _jobStartTime;
 		private const int BaudRate = 115200;
-		private static RepitierFirmwareDevice _dev = new RepitierFirmwareDevice("", BaudRate);
+		private static RepitierFirmwareDevice _dev = new RepitierFirmwareDevice("");
 		private static string ToDevOutput(GcodeCommandFrame g) {
 			g.N = _totalSent;
 			var cmd = GcodeParser.ToStringCommand(g);
@@ -49,15 +52,17 @@ namespace Sapphire.Host.ConsoleApp {
 		private static long _totalAbs;
 		private static GcodeCommandFrame _lastSentCommand;
 		private static string _response;
+		private static async void SendMsg(string message, string port = "Send") {
+			await _connection.InvokeAsync<string>(port, message);
+		}
 		private static readonly string LogFileName = $@"{AppPath}{DateTime.Now.ToShortDateString()}.{DateTime.Now.ToShortTimeString().Replace(":", "_")}.txt";
 		private static string OutputLog() {
 			return $"{_totalAbs:D5}: { _totalAbs * 100 / CommandStack.Count:D2}% {Math.Round(Convert.ToDecimal((DateTime.Now - _jobStartTime).TotalSeconds), 2)} sec >> {GcodeParser.ToStringCommand(_lastSentCommand)} << {_response.Trim()}";
 		}
-		private static async void SaveToFile(string data) {
+		private static async void SaveLog(string data) {
 
 			if (CommandStack.Count > 0) {
-				var bytes = Encoding.UTF8.GetBytes($"{data}\r\n");
-
+				var bytes = Encoding.UTF8.GetBytes($"{DateTime.Now.ToShortDateString()}:{DateTime.Now.ToShortTimeString()} [{data}]\r\n");
 				using (var stream = File.Open(LogFileName, FileMode.Append)) {
 					while (!stream.CanWrite) { }
 					await stream.WriteAsync(bytes, 0, bytes.Length);
@@ -96,9 +101,7 @@ namespace Sapphire.Host.ConsoleApp {
 					_response = _dev.GetResponse().Trim();
 				}
 
-				Console.WriteLine(OutputLog());
-
-				SaveToFile(OutputLog());
+				SendMsg(OutputLog());
 
 				_totalSent++;
 				_totalAbs = _totalAbs + 1;
@@ -135,10 +138,9 @@ namespace Sapphire.Host.ConsoleApp {
 		private static string[] ReadFile(string path) {
 			return File.ReadAllLines(path).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
 		}
-		public static async Task StartConnectionAsync() {
+		private static async Task StartConnectionAsync() {
 			_connection = new HubConnectionBuilder()
 				.WithUrl("http://localhost:21912/Comm")
-				.WithConsoleLogger()
 				.Build();
 
 			await _connection.StartAsync();
@@ -158,21 +160,32 @@ namespace Sapphire.Host.ConsoleApp {
 				SaveCfg(c);
 			}
 		}
-		public static int Main() {
+		public static int Main(string[] args) {
+
+			StartConnectionAsync().GetAwaiter().GetResult();
 
 			InitCfg();
 			InitWebClient();
 			Register();
 
-			//var path = args[0];
-			//var fileContent = ReadFile(path);
-			//PrepareJob(fileContent);
+			//_connection.On<string>("Send", (message) => {
+			//	SaveLog(message);
+			//});
 
-			//using (_dev = new RepitierFirmwareDevice("COM4", BaudRate)) {
-			//	Connect();
-			//	DoJob();
-			//	Disconnect();
-			//}
+			SendMsg($"ok. Token recived. {_jsonRequest.Token}");
+
+			var path = args[0];
+			var fileContent = ReadFile(path);
+
+			PrepareJob(fileContent);
+
+			using (_dev = new RepitierFirmwareDevice("COM4", BaudRate)) {
+				Connect();
+				DoJob();
+				Disconnect();
+			}
+
+			DisposeAsync().GetAwaiter().GetResult();
 			return 0;
 		}
 	}
