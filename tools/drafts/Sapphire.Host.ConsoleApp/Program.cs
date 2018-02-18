@@ -3,14 +3,41 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Gcode.Entity;
 using Gcode.Utils;
+using Microsoft.AspNetCore.SignalR.Client;
+using Newtonsoft.Json;
 
+[assembly: CLSCompliant(true)]
 namespace Sapphire.Host.ConsoleApp {
 	public static class SapphireHostConsole {
+		private static readonly string AppPath = AppDomain.CurrentDomain.BaseDirectory;
+		private static readonly string AppCfgPath = $"{AppPath}host.cfg.json";
+		private static HostConfiguration GetCfg() {
+			return JsonConvert.DeserializeObject<HostConfiguration>(ReadFileStr(AppCfgPath));
+		}
+		private static void SaveCfg(HostConfiguration cfg) {
+
+			File.WriteAllText(AppCfgPath, JsonConvert.SerializeObject(cfg));
+		}
+		private static SapphireWebClient _webClient;
+		private static void InitWebClient() {
+			_webClient = new SapphireWebClient(GetCfg().DispatcherUrl);
+		}
+		private static void Register() {
+			var resObj = _webClient.Post("Device", "Register", GetCfg()).GetAwaiter().GetResult();
+			var res = JsonConvert.DeserializeObject<JsonResultViewModel>(resObj);
+			var token = res.Obj.ToString();
+			var cfg = new HostConfiguration();
+			cfg = GetCfg();
+			cfg.Token = token;
+			SaveCfg(cfg);
+		}
+		private static HubConnection _connection;
 		private static DateTime _jobStartTime;
 		private const int BaudRate = 115200;
-		private static RepitierFirmwareDevice _dev;
+		private static RepitierFirmwareDevice _dev = new RepitierFirmwareDevice("", BaudRate);
 		private static string ToDevOutput(GcodeCommandFrame g) {
 			g.N = _totalSent;
 			var cmd = GcodeParser.ToStringCommand(g);
@@ -22,7 +49,7 @@ namespace Sapphire.Host.ConsoleApp {
 		private static long _totalAbs;
 		private static GcodeCommandFrame _lastSentCommand;
 		private static string _response;
-		private static readonly string FileName = $@"C:\Users\User\Documents\{DateTime.Now.ToShortDateString()}.{DateTime.Now.ToShortTimeString().Replace(":", "_")}.txt";
+		private static readonly string LogFileName = $@"{AppPath}{DateTime.Now.ToShortDateString()}.{DateTime.Now.ToShortTimeString().Replace(":", "_")}.txt";
 		private static string OutputLog() {
 			return $"{_totalAbs:D5}: { _totalAbs * 100 / CommandStack.Count:D2}% {Math.Round(Convert.ToDecimal((DateTime.Now - _jobStartTime).TotalSeconds), 2)} sec >> {GcodeParser.ToStringCommand(_lastSentCommand)} << {_response.Trim()}";
 		}
@@ -31,7 +58,7 @@ namespace Sapphire.Host.ConsoleApp {
 			if (CommandStack.Count > 0) {
 				var bytes = Encoding.UTF8.GetBytes($"{data}\r\n");
 
-				using (var stream = File.Open(FileName, FileMode.Append)) {
+				using (var stream = File.Open(LogFileName, FileMode.Append)) {
 					while (!stream.CanWrite) { }
 					await stream.WriteAsync(bytes, 0, bytes.Length);
 				}
@@ -102,19 +129,50 @@ namespace Sapphire.Host.ConsoleApp {
 				}
 			}
 		}
+		private static string ReadFileStr(string path) {
+			return !File.Exists(path) ? string.Empty : File.ReadAllText(path);
+		}
 		private static string[] ReadFile(string path) {
 			return File.ReadAllLines(path).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
 		}
-		public static int Main(string[] args) {
-			var path = args[0];
-			var fileContent = ReadFile(path);
-			PrepareJob(fileContent);
+		public static async Task StartConnectionAsync() {
+			_connection = new HubConnectionBuilder()
+				.WithUrl("http://localhost:21912/Comm")
+				.WithConsoleLogger()
+				.Build();
 
-			using (_dev = new RepitierFirmwareDevice("COM4", BaudRate)) {
-				Connect();
-				DoJob();
-				Disconnect();
+			await _connection.StartAsync();
+		}
+		private static async Task DisposeAsync() {
+			await _connection.DisposeAsync();
+		}
+		private static void InitCfg() {
+			if (!File.Exists(AppCfgPath)) {
+
+				var c = new HostConfiguration {
+					HostId = Guid.NewGuid().ToString(),
+					AvailablePorts = RepitierFirmwareDevice.PortsAvailable,
+					DispatcherUrl = "http://localhost:21912/"
+				};
+
+				SaveCfg(c);
 			}
+		}
+		public static int Main() {
+
+			InitCfg();
+			InitWebClient();
+			Register();
+
+			//var path = args[0];
+			//var fileContent = ReadFile(path);
+			//PrepareJob(fileContent);
+
+			//using (_dev = new RepitierFirmwareDevice("COM4", BaudRate)) {
+			//	Connect();
+			//	DoJob();
+			//	Disconnect();
+			//}
 			return 0;
 		}
 	}

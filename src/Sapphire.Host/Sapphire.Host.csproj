@@ -21,11 +21,18 @@
     <PackageReference Include="Gcode.Common.Utils" Version="0.1.65" />
     <PackageReference Include="Gcode.Entity" Version="0.1.65" />
     <PackageReference Include="Gcode.Utils" Version="0.1.65" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Extensions" Version="2.0.1" />
     <PackageReference Include="System.IO.Ports" Version="4.5.0-preview1-25914-04" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sapphire.Host.Core\Sapphire.Host.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\..\..\..\.nuget\packages\newtonsoft.json\11.0.1\lib\netstandard2.0\Newtonsoft.Json.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

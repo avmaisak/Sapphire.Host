@@ -12,6 +12,7 @@ namespace Sapphire.Host {
 		private SerialPort _serialPort;
 		private readonly string _portName;
 		private readonly int _baudRate;
+		public static string[] PortsAvailable => SerialPort.GetPortNames();
 		public bool ConnectedToDevice { get; private set; }
 		private bool _disposed;
 		/// <summary>
