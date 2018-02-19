@@ -36,6 +36,10 @@ namespace Sapphire.Host.ConsoleApp {
 			SaveCfg(cfg);
 			_jsonRequest = new JsonRequest { Token = cfg.Token };
 
+			SendMsg(_jsonRequest);
+
+			//SendMsg($"ok. Token received. {_jsonRequest.Token}");
+
 		}
 		private static HubConnection _connection;
 		private static DateTime _jobStartTime;
@@ -52,8 +56,9 @@ namespace Sapphire.Host.ConsoleApp {
 		private static long _totalAbs;
 		private static GcodeCommandFrame _lastSentCommand;
 		private static string _response;
-		private static async void SendMsg(string message, string port = "Send") {
-			await _connection.InvokeAsync<string>(port, message);
+		private static async void SendMsg(JsonRequest message, string port = "Send") {
+			var str = JsonConvert.SerializeObject(message);
+			await _connection.InvokeAsync<string>(port, str);
 		}
 		private static readonly string LogFileName = $@"{AppPath}{DateTime.Now.ToShortDateString()}.{DateTime.Now.ToShortTimeString().Replace(":", "_")}.txt";
 		private static string OutputLog() {
@@ -100,7 +105,7 @@ namespace Sapphire.Host.ConsoleApp {
 					_response = _dev.GetResponse().Trim();
 				}
 
-				SendMsg(OutputLog());
+				SendMsg(new JsonRequest { Token = GetCfg().Token, Obj = OutputLog() });
 
 				_totalSent++;
 				_totalAbs = _totalAbs + 1;
@@ -139,7 +144,7 @@ namespace Sapphire.Host.ConsoleApp {
 		}
 		private static async Task StartConnectionAsync() {
 			_connection = new HubConnectionBuilder()
-				.WithUrl("http://localhost:21912/Comm")
+				.WithUrl($"{GetCfg().DispatcherUrl}/Comm")
 				.Build();
 
 			await _connection.StartAsync();
@@ -153,36 +158,59 @@ namespace Sapphire.Host.ConsoleApp {
 				var c = new HostConfiguration {
 					HostId = Guid.NewGuid().ToString(),
 					AvailablePorts = RepitierFirmwareDevice.PortsAvailable,
-					DispatcherUrl = "http://localhost:21912/"
+					DispatcherUrl = "http://localhost:58391/"
 				};
 
 				SaveCfg(c);
 			}
 		}
-		public static int Main(string[] args) {
+		private static void InitHubEvents() {
 
-			StartConnectionAsync().GetAwaiter().GetResult();
+		}
+		private static bool StateReady { get; set; }
+		private static bool StatePause { get; set; }
+		private static bool StateWork { get; set; }
+
+		private static void ResetDeviceState() {
+			StateReady = true;
+			StatePause = true;
+			StateWork = false;
+		}
+
+		public static int Main() {
 
 			InitCfg();
 			InitWebClient();
+
+			//hub connection
+			StartConnectionAsync().GetAwaiter().GetResult();
+			//init  Hub events
+			_connection.On<string>("Send", message => {
+				//Console.WriteLine(message);
+				var obj = JsonConvert.DeserializeObject<JsonRequest>(message);
+				if (obj.Token == GetCfg().Token) {
+					Console.WriteLine($"This is my message! {JsonConvert.SerializeObject(obj)}");
+				}
+				//Console.WriteLine(JsonConvert.SerializeObject(obj));
+			});
+
 			Register();
 
-			//_connection.On<string>("Send", (message) => {
-			//	SaveLog(message);
-			//});
+			ResetDeviceState();
 
-			SendMsg($"ok. Token recived. {_jsonRequest.Token}");
-
-			var path = args[0];
-			var fileContent = ReadFile(path);
-
-			PrepareJob(fileContent);
-
-			using (_dev = new RepitierFirmwareDevice("COM4", BaudRate)) {
-				Connect();
-				DoJob();
-				Disconnect();
+			while (StateReady) {
 			}
+
+			//var path = args[0];
+			//var fileContent = ReadFile(path);
+
+			//PrepareJob(fileContent);
+
+			//using (_dev = new RepitierFirmwareDevice("COM4", BaudRate)) {
+			//	Connect();
+			//	DoJob();
+			//	Disconnect();
+			//}
 
 			DisposeAsync().GetAwaiter().GetResult();
 			return 0;
