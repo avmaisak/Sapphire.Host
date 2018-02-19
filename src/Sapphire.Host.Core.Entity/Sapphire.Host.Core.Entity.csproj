@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="Gcode.Entity" Version="0.1.65" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
   </ItemGroup>
 
   <ItemGroup>

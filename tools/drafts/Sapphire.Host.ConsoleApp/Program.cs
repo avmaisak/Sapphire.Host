@@ -8,6 +8,7 @@ using Gcode.Entity;
 using Gcode.Utils;
 using Microsoft.AspNetCore.SignalR.Client;
 using Newtonsoft.Json;
+using Sapphire.Host.Core.Entity;
 
 [assembly: CLSCompliant(true)]
 namespace Sapphire.Host.ConsoleApp {
@@ -19,7 +20,6 @@ namespace Sapphire.Host.ConsoleApp {
 			return JsonConvert.DeserializeObject<HostConfiguration>(ReadFileStr(AppCfgPath));
 		}
 		private static void SaveCfg(HostConfiguration cfg) {
-
 			File.WriteAllText(AppCfgPath, JsonConvert.SerializeObject(cfg));
 		}
 		private static SapphireWebClient _webClient;
@@ -85,7 +85,6 @@ namespace Sapphire.Host.ConsoleApp {
 			_response = _dev.GetResponse().Trim();
 		}
 		private static void DoJob() {
-
 			while (CommandStack.Count > 0) {
 
 				SendNext();

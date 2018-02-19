@@ -2,7 +2,7 @@
 using System.Text;
 using Newtonsoft.Json;
 
-namespace Sapphire.Host {
+namespace Sapphire.Host.Core.Entity {
 	public class JsonContent : StringContent {
 		public JsonContent(object obj) : base(JsonConvert.SerializeObject(obj), Encoding.UTF8, "application/json") { }
 	}
