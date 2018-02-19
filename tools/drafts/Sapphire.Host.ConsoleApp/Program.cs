@@ -13,6 +13,8 @@ using Sapphire.Host.Core.Entity;
 [assembly: CLSCompliant(true)]
 namespace Sapphire.Host.ConsoleApp {
 	public static class SapphireHostConsole {
+
+		private static string _connectionId = string.Empty;
 		private static JsonRequest _jsonRequest;
 		private static readonly string AppPath = AppDomain.CurrentDomain.BaseDirectory;
 		private static readonly string AppCfgPath = $"{AppPath}host.cfg.json";
@@ -34,6 +36,7 @@ namespace Sapphire.Host.ConsoleApp {
 			cfg = GetCfg();
 			cfg.Token = token;
 			SaveCfg(cfg);
+
 			_jsonRequest = new JsonRequest { Token = cfg.Token };
 
 			SendMsg(_jsonRequest);
@@ -148,6 +151,7 @@ namespace Sapphire.Host.ConsoleApp {
 				.Build();
 
 			await _connection.StartAsync();
+
 		}
 		private static async Task DisposeAsync() {
 			await _connection.DisposeAsync();
@@ -158,25 +162,42 @@ namespace Sapphire.Host.ConsoleApp {
 				var c = new HostConfiguration {
 					HostId = Guid.NewGuid().ToString(),
 					AvailablePorts = RepitierFirmwareDevice.PortsAvailable,
-					DispatcherUrl = "http://localhost:58391/"
+					DispatcherUrl = "http://localhost:21912/"
 				};
 
 				SaveCfg(c);
 			}
 		}
 		private static void InitHubEvents() {
-
+			//init  Hub events
+			_connection.On<string>("Send", message => {
+				//Console.WriteLine(message);
+				var obj = JsonConvert.DeserializeObject<JsonRequest>(message);
+				if (obj != null) {
+					//Сообщение адресату
+					if (obj.Token == GetCfg().Token) {
+						switch (obj.Command) {
+							case "ConnectionId":
+								_connectionId = obj.Obj.ToString();
+								Console.WriteLine($"Great! Connection id assigned! {_connectionId}");
+								break;
+							default:
+								Console.WriteLine($"This is my message! {JsonConvert.SerializeObject(obj)}");
+								break;
+						}
+					}
+				}
+				//Console.WriteLine(JsonConvert.SerializeObject(obj));
+			});
 		}
 		private static bool StateReady { get; set; }
 		private static bool StatePause { get; set; }
 		private static bool StateWork { get; set; }
-
 		private static void ResetDeviceState() {
 			StateReady = true;
 			StatePause = true;
 			StateWork = false;
 		}
-
 		public static int Main() {
 
 			InitCfg();
@@ -184,15 +205,7 @@ namespace Sapphire.Host.ConsoleApp {
 
 			//hub connection
 			StartConnectionAsync().GetAwaiter().GetResult();
-			//init  Hub events
-			_connection.On<string>("Send", message => {
-				//Console.WriteLine(message);
-				var obj = JsonConvert.DeserializeObject<JsonRequest>(message);
-				if (obj.Token == GetCfg().Token) {
-					Console.WriteLine($"This is my message! {JsonConvert.SerializeObject(obj)}");
-				}
-				//Console.WriteLine(JsonConvert.SerializeObject(obj));
-			});
+			InitHubEvents();
 
 			Register();
 
